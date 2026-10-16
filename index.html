@@ -10,8 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- html2pdf.js para exportación directa a PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -226,10 +224,6 @@
                             <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i>
                             Guardar como PDF / Imprimir
                         </button>
-                        <button onclick="downloadPDF()" class="w-full py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
-                            <i data-lucide="file-down" class="w-3.5 h-3.5 text-amber-600"></i>
-                            Descargar archivo directo .pdf
-                        </button>
                         <button onclick="copySummaryText()" class="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-500"></i>
                             Copiar todas las respuestas
@@ -275,11 +269,7 @@
                 </button>
                 <button onclick="printNativePDF()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all">
                     <i data-lucide="printer" class="w-4 h-4"></i>
-                    Guardar como PDF (Recomendado)
-                </button>
-                <button onclick="downloadPDF()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
-                    <i data-lucide="file-down" class="w-4 h-4 text-slate-500"></i>
-                    Descarga directa .pdf
+                    Guardar como PDF
                 </button>
                 <button onclick="copySummaryText()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
                     <i data-lucide="copy" class="w-4 h-4 text-slate-500"></i>
@@ -328,13 +318,9 @@
                         <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                         Copiar
                     </button>
-                    <button onclick="printNativePDF()" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm transition-colors">
+                    <button onclick="printNativePDF()" class="px-5 py-2 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm transition-colors">
                         <i data-lucide="printer" class="w-4 h-4"></i>
-                        Guardar como PDF / Imprimir
-                    </button>
-                    <button onclick="downloadPDF()" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 flex items-center gap-1.5 transition-colors">
-                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                        Descarga directa
+                        Guardar como PDF
                     </button>
                 </div>
             </div>
@@ -1154,52 +1140,9 @@
             }, duration);
         }
 
+        // Alias de seguridad: redirige cualquier intento a la exportación nativa
         function downloadPDF() {
-            showToast('Generando tu archivo PDF...');
-
-            // Contenedor temporal en el flujo normal (sin position: absolute para evitar colapso de altura a 0)
-            const tempContainer = document.createElement('div');
-            tempContainer.id = 'temp-pdf-export-box';
-            tempContainer.style.width = '794px'; // Ancho A4 estándar a 96 DPI
-            tempContainer.style.padding = '24px';
-            tempContainer.style.backgroundColor = '#ffffff';
-            tempContainer.style.boxSizing = 'border-box';
-            tempContainer.innerHTML = generateReportHTML();
-            document.body.appendChild(tempContainer);
-
-            const empresaSlug = (appState.meta.empresa || 'Constructor')
-                .trim()
-                .replace(/[^a-zA-Z0-9_-]/g, '_')
-                .replace(/_+/g, '_');
-
-            const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     `Cuestionario_ConstruIA_${empresaSlug}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
-                    logging: false 
-                },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'] }
-            };
-
-            // Ejecución verificada con html2pdf
-            html2pdf().from(tempContainer).set(opt).save().then(() => {
-                if (document.body.contains(tempContainer)) {
-                    document.body.removeChild(tempContainer);
-                }
-                showToast('¡PDF descargado con éxito!');
-            }).catch(err => {
-                console.error('Error al generar PDF con html2pdf:', err);
-                if (document.body.contains(tempContainer)) {
-                    document.body.removeChild(tempContainer);
-                }
-                // Fallback a impresión nativa si hubiese alguna restricción
-                showToast('Abriendo ventana de impresión para guardar PDF...');
-                printNativePDF();
-            });
+            printNativePDF();
         }
 
         function printNativePDF() {
