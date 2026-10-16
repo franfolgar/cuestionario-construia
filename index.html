@@ -1072,7 +1072,7 @@
                     <!-- Bloques y Respuestas -->
                     <div class="space-y-6">
                         ${QUESTIONNAIRE_DATA.map(block => `
-                            <div class="border border-slate-200 rounded-xl overflow-hidden page-break-inside-avoid">
+                            <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
                                 <div class="bg-slate-900 text-white px-4 py-2.5 text-sm font-bold flex items-center gap-2">
                                     <span>${block.emoji}</span>
                                     <span>${block.title}</span>
@@ -1153,16 +1153,12 @@
         function downloadPDF() {
             showToast('Generando tu archivo PDF...');
 
-            // Contenedor temporal fijado en top:0 para que html2canvas no sufra por el scroll de la página
+            // Contenedor temporal en el flujo normal (sin position: absolute para evitar colapso de altura a 0)
             const tempContainer = document.createElement('div');
             tempContainer.id = 'temp-pdf-export-box';
-            tempContainer.style.position = 'absolute';
-            tempContainer.style.top = '0px';
-            tempContainer.style.left = '0px';
-            tempContainer.style.width = '794px'; // Ancho A4 exacto a 96 DPI
+            tempContainer.style.width = '794px'; // Ancho A4 estándar a 96 DPI
             tempContainer.style.padding = '24px';
             tempContainer.style.backgroundColor = '#ffffff';
-            tempContainer.style.zIndex = '999999';
             tempContainer.style.boxSizing = 'border-box';
             tempContainer.innerHTML = generateReportHTML();
             document.body.appendChild(tempContainer);
@@ -1173,38 +1169,33 @@
                 .replace(/_+/g, '_');
 
             const opt = {
-                margin:       [8, 8, 8, 8],
+                margin:       [10, 10, 10, 10],
                 filename:     `Cuestionario_ConstruIA_${empresaSlug}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
-                    scrollY: 0, 
-                    scrollX: 0,
-                    windowWidth: 1024,
                     logging: false 
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
                 pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            // Pequeña espera asíncrona para que el motor renderice estilos y tipografías
-            setTimeout(() => {
-                html2pdf().set(opt).from(tempContainer).save().then(() => {
-                    if (document.body.contains(tempContainer)) {
-                        document.body.removeChild(tempContainer);
-                    }
-                    showToast('¡PDF descargado con éxito!');
-                }).catch(err => {
-                    console.error('Error al generar PDF con html2pdf:', err);
-                    if (document.body.contains(tempContainer)) {
-                        document.body.removeChild(tempContainer);
-                    }
-                    // Fallback transparente a impresión del sistema
-                    showToast('Abriendo ventana de impresión para guardar PDF...');
-                    printNativePDF();
-                });
-            }, 180);
+            // Ejecución verificada con html2pdf
+            html2pdf().from(tempContainer).set(opt).save().then(() => {
+                if (document.body.contains(tempContainer)) {
+                    document.body.removeChild(tempContainer);
+                }
+                showToast('¡PDF descargado con éxito!');
+            }).catch(err => {
+                console.error('Error al generar PDF con html2pdf:', err);
+                if (document.body.contains(tempContainer)) {
+                    document.body.removeChild(tempContainer);
+                }
+                // Fallback a impresión nativa si hubiese alguna restricción
+                showToast('Abriendo ventana de impresión para guardar PDF...');
+                printNativePDF();
+            });
         }
 
         function printNativePDF() {
