@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuestionario Operativo: Automatización de Presupuestos (ConstruIA)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js para exportación directa a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        },
+                        slate: {
+                            850: '#151f32',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* Estilos personalizados para inputs integrados */
+        .inline-input {
+            border-bottom: 2px solid #cbd5e1;
+            background-color: rgba(248, 250, 252, 0.8);
+            padding: 2px 8px;
+            font-weight: 600;
+            color: #0f172a;
+            transition: all 0.2s ease;
+            border-radius: 4px 4px 0 0;
+        }
+        .inline-input:focus {
+            outline: none;
+            border-bottom-color: #f59e0b;
+            background-color: #fffbeb;
+        }
+
+        /* Animación suave para tarjetas de opciones */
+        .option-card {
+            transition: all 0.15s ease-in-out;
+        }
+        .option-card:hover {
+            border-color: #94a3b8;
+            background-color: #f8fafc;
+        }
+        .option-card.selected {
+            border-color: #f59e0b;
+            background-color: #fffbeb;
+            box-shadow: 0 2px 8px -2px rgba(245, 158, 11, 0.18);
+        }
+
+        /* Estilos exclusivos de impresión nativa (@media print) */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            #print-report-container {
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            .page-break-inside-avoid {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- BARRA SUPERIOR FIJA (PROGRESO Y ACCIONES RÁPIDAS) -->
+    <header class="sticky top-0 z-30 bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Logo y Marca -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-slate-900 font-extrabold shadow-md shadow-amber-500/20">
+                    <i data-lucide="hard-hat" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-lg tracking-tight text-white">Constru<span class="text-amber-400">IA</span></span>
+                        <span class="hidden sm:inline-block text-xs font-medium uppercase tracking-wider bg-slate-800 text-amber-400 px-2.5 py-0.5 rounded-full border border-slate-700">Diagnóstico Operativo</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden md:block">Configuración de Inteligencia Artificial para Presupuestos</p>
+                </div>
+            </div>
+
+            <!-- Barra de Progreso Central -->
+            <div class="flex-1 max-w-md mx-4 hidden sm:block">
+                <div class="flex justify-between items-center text-xs mb-1.5">
+                    <span class="text-slate-300 font-medium">Progreso del cuestionario</span>
+                    <span id="progress-text" class="font-bold text-amber-400">0 / 20 respondidas (0%)</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="openSummaryModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4 text-amber-400"></i>
+                    <span class="hidden md:inline">Ver Resumen</span>
+                </button>
+                <button onclick="downloadPDF()" id="btn-top-pdf" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/10 transition-all">
+                    <i data-lucide="file-down" class="w-4 h-4"></i>
+                    <span>Descargar PDF</span>
+                </button>
+            </div>
+        </div>
+        <!-- Barra de progreso móvil -->
+        <div class="sm:hidden bg-slate-850 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between gap-3">
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="progress-bar-mobile" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <span id="progress-text-mobile" class="text-[11px] font-bold text-amber-400 whitespace-nowrap">0/20</span>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL INTERACTIVO -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 no-print">
+        
+        <!-- CABECERA DEL CUESTIONARIO Y DATOS DEL CONSTRUCTOR -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 sm:p-8 text-white relative overflow-hidden">
+                <div class="relative z-10 max-w-3xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-3">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Calibración Personalizada de IA
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-3">
+                        Cuestionario Operativo: Automatización de Presupuestos (ConstruIA)
+                    </h1>
+                    <blockquote class="text-slate-300 text-sm sm:text-base leading-relaxed border-l-4 border-amber-500 pl-4 py-1 bg-slate-800/50 rounded-r-lg">
+                        <strong class="text-white">Objetivo:</strong> Conocer al detalle tu operativa diaria para configurar la Inteligencia Artificial a tu medida, garantizando que los precios calculados reflejen fielmente tus costes reales, rendimientos de obra y márgenes comerciales, minimizando errores y ahorrándote horas de revisión manual.
+                    </blockquote>
+                </div>
+            </div>
+
+            <!-- Ficha de Identificación Opcional -->
+            <div class="p-6 bg-slate-50/70 border-t border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <i data-lucide="building-2" class="w-4 h-4 text-amber-600"></i>
+                        Datos de la Empresa / Profesional (Para el Informe PDF)
+                    </h2>
+                    <span id="save-indicator" class="text-xs text-emerald-600 font-medium flex items-center gap-1 opacity-0 transition-opacity duration-300">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Guardado automáticamente
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Empresa / Constructora</label>
+                        <input type="text" id="meta-empresa" placeholder="Ej. Construcciones Pérez S.L." class="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Responsable / Cargo</label>
+                        <input type="text" id="meta-responsable" placeholder="Ej. Juan Pérez - Gerente / Jefe de Obra" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Especialidad Principal</label>
+                        <input type="text" id="meta-especialidad" placeholder="Ej. Reforma integral y Edificación" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Fecha de Emisión</label>
+                        <input type="date" id="meta-fecha" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LAYOUT DE DOS COLUMNAS: NAVEGACIÓN LATERAL + BLOQUES DE PREGUNTAS -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- SIDEBAR DE NAVEGACIÓN POR BLOQUES -->
+            <aside class="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24 space-y-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 px-2 mb-3">Bloques del Cuestionario</h3>
+                    <nav id="block-nav" class="space-y-1">
+                        <!-- Generado dinámicamente por JS -->
+                    </nav>
+
+                    <hr class="my-4 border-slate-100">
+
+                    <!-- Acciones de Gestión -->
+                    <div class="space-y-2">
+                        <button onclick="shareWhatsApp()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
+                            <i data-lucide="message-circle" class="w-4 h-4 text-emerald-200"></i>
+                            Enviar por WhatsApp
+                        </button>
+                        <button onclick="downloadPDF()" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
+                            <i data-lucide="file-down" class="w-4 h-4 text-amber-400"></i>
+                            Descargar Informe PDF
+                        </button>
+                        <button onclick="copySummaryText()" class="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-500"></i>
+                            Copiar todas las respuestas
+                        </button>
+                        <button onclick="printNativePDF()" class="w-full py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="printer" class="w-3.5 h-3.5 text-amber-600"></i>
+                            Imprimir / Vista previa
+                        </button>
+                        <button onclick="openResetModal()" class="w-full py-2 px-4 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 font-medium text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            Limpiar respuestas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Ayuda -->
+                <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200/80 p-4 text-xs text-amber-900 space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-amber-800">
+                        <i data-lucide="info" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                        <span>Consejo de cumplimentación</span>
+                    </div>
+                    <p class="leading-relaxed text-amber-800/90">
+                        Puedes marcar <strong>una o varias opciones</strong> en cualquier pregunta según tu forma real de trabajar y rellenar los datos numéricos o aclaraciones sobre la marcha.
+                    </p>
+                </div>
+            </aside>
+
+            <!-- CONTENEDOR DE LOS 7 BLOQUES Y 20 PREGUNTAS -->
+            <div class="lg:col-span-8 xl:col-span-9 space-y-8" id="questions-container">
+                <!-- Se renderiza dinámicamente para mantener código limpio y sincronización total -->
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PIE DE PÁGINA CON ACCIÓN FINAL -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-8 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-center sm:text-left">
+                <p class="text-sm font-semibold text-slate-800">¡Muchas gracias por completar el cuestionario operativo!</p>
+                <p class="text-xs text-slate-500">Con estas respuestas calibraremos el motor de ConstruIA para que calcule exactamente con tu criterio profesional.</p>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <button onclick="shareWhatsApp()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition-all">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    Enviar por WhatsApp
+                </button>
+                <button onclick="copySummaryText()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
+                    <i data-lucide="copy" class="w-4 h-4 text-slate-500"></i>
+                    Copiar Respuestas
+                </button>
+                <button onclick="openSummaryModal()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
+                    <i data-lucide="clipboard-check" class="w-4 h-4 text-slate-600"></i>
+                    Revisar
+                </button>
+                <button onclick="downloadPDF()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all">
+                    <i data-lucide="file-down" class="w-4 h-4"></i>
+                    Descargar PDF
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =====================================================================
+         MODAL DE VISTA PREVIA / RESUMEN Y EXPORTACIÓN PDF
+    ====================================================================== -->
+    <div id="summary-modal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Cabecera del Modal -->
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="file-check-2" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="font-bold text-base sm:text-lg">Vista Previa del Informe Operativo (ConstruIA)</h3>
+                </div>
+                <button onclick="closeSummaryModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Cuerpo del Modal con el Documento Maquetado -->
+            <div class="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100">
+                <div id="modal-report-preview" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-10 max-w-3xl mx-auto">
+                    <!-- Contenido inyectado dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Pie del Modal -->
+            <div class="px-6 py-4 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <span class="text-xs text-slate-500">Verifica que todos los parámetros estén correctos antes de exportar.</span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="shareWhatsApp()" class="px-3.5 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        WhatsApp
+                    </button>
+                    <button onclick="copySummaryText()" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        Copiar
+                    </button>
+                    <button onclick="printNativePDF()" class="px-3.5 py-2 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i>
+                        Imprimir
+                    </button>
+                    <button onclick="downloadPDF()" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm transition-colors">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Descargar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL DE CONFIRMACIÓN PARA LIMPIAR FORMULARIO (SIN USAR confirm())
+    ====================================================================== -->
+    <div id="reset-modal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-fade-in">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">¿Limpiar todas las respuestas?</h3>
+            <p class="text-sm text-slate-600 mb-6">
+                Esta acción borrará todas las opciones seleccionadas y los textos introducidos en las 20 preguntas del cuestionario.
+            </p>
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="closeResetModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                    Cancelar
+                </button>
+                <button onclick="confirmResetForm()" class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors">
+                    Sí, borrar todo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIÓN TOAST FLOTANTE -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-3 text-sm no-print">
+        <i data-lucide="Sparkles" class="w-4 h-4 text-amber-400"></i>
+        <span id="toast-message">Generando documento PDF...</span>
+    </div>
+
+    <!-- =====================================================================
+         PLANTILLA PARA IMPRESIÓN Y GENERACIÓN DE PDF (LIMPIA Y PROFESIONAL)
+    ====================================================================== -->
+    <div id="print-wrapper" class="hidden print-only">
+        <div id="print-report-container" class="bg-white text-slate-900 p-8 max-w-4xl mx-auto">
+            <!-- Se inyecta mediante renderReportHTML() al imprimir o exportar -->
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 1. DEFINICIÓN ESTRUCTURADA DE LOS 7 BLOQUES Y LAS 20 PREGUNTAS EXACTAS
+        // =========================================================================
+        const QUESTIONNAIRE_DATA = [
+            {
+                id: 'bloque-1',
+                number: 1,
+                icon: 'laptop',
+                emoji: '💻',
+                title: 'Bloque 1: Software y Archivos de Trabajo',
+                questions: [
+                    {
+                        id: 'q1',
+                        number: 1,
+                        text: '¿Qué programa utilizas habitualmente para abrir, modificar o cerrar presupuestos?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q1_opt1', label: 'Presto', inlineInputs: [{ id: 'q1_presto_ver', prefix: '(¿Qué versión?:', suffix: ')', placeholder: 'Ej. Presto 2023 / 8.8', width: 'w-44' }] },
+                            { id: 'q1_opt2', label: 'Arquímedes (CYPE)' },
+                            { id: 'q1_opt3', label: 'TCQ / Menfis' },
+                            { id: 'q1_opt4', label: 'Hojas de cálculo Excel propias' },
+                            { id: 'q1_opt5', label: 'Otro:', inlineInputs: [{ id: 'q1_otro', prefix: '', suffix: '', placeholder: 'Especificar programa...', width: 'w-64' }] }
+                        ]
+                    },
+                    {
+                        id: 'q2',
+                        number: 2,
+                        text: '¿En qué formato sueles recibir los presupuestos del aparejador / arquitecto?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q2_opt1', label: 'Archivo .bc3 estándar (FIEBDC-3)' },
+                            { id: 'q2_opt2', label: 'Hoja de cálculo Excel (.xlsx / .xls)' },
+                            { id: 'q2_opt3', label: 'Documento PDF (para picar a mano)' },
+                            { id: 'q2_opt4', label: 'Varios formatos según el cliente/técnico' }
+                        ]
+                    },
+                    {
+                        id: 'q3',
+                        number: 3,
+                        text: '¿Cómo tienes organizada tu carpeta de OneDrive / Local?',
+                        subtitle: '¿Están las obras ordenadas por carpetas (ej. /Obras_2024/Reforma_Perez/)? Describe brevemente la ruta o estructura de carpetas donde guardas los presupuestos cerrados:',
+                        type: 'text_with_options',
+                        options: [
+                            { id: 'q3_opt1', label: 'Sí, las obras están ordenadas por carpetas (por año, cliente o proyecto)' },
+                            { id: 'q3_opt2', label: 'Están agrupadas en una carpeta general sin estructura fija' }
+                        ],
+                        textarea: {
+                            id: 'q3_text',
+                            label: 'Respuesta (Ruta o estructura de carpetas):',
+                            placeholder: 'Ej: /OneDrive/Presupuestos_Cerrados/2025/2501_Reforma_Vivienda_Perez/Presupuesto_Final.bc3'
+                        }
+                    }
+                ]
+            },
+            {
+                id: 'bloque-2',
+                number: 2,
+                icon: 'file-Down',
+                emoji: '📥',
+                title: 'Bloque 2: Características del Archivo BC3 del Aparejador',
+                questions: [
+                    {
+                        id: 'q4',
+                        number: 4,
+                        text: 'Cuando te llega el archivo BC3 para presupuestar:',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q4_opt1', label: 'Viene "a cero" (solo descripciones y mediciones, sin precios unitarios).' },
+                            { id: 'q4_opt2', label: 'Viene con precios de referencia del colegio/base oficial (que tú debes corregir a tus costes).' },
+                            { id: 'q4_opt3', label: 'Varía según el técnico que redacte el proyecto.' }
+                        ]
+                    },
+                    {
+                        id: 'q5',
+                        number: 5,
+                        text: 'Las partidas del proyecto, ¿suelen tener códigos estándar o propios?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q5_opt1', label: 'Códigos de bases conocidas (Base Centro, IVE, Guadalajara, CYPE, etc.)' },
+                            { id: 'q5_opt2', label: 'Códigos propios o aleatorios que inventa cada aparejador (ej. CAP01.01, DEM-01)' },
+                            { id: 'q5_opt3', label: 'Mezcla de ambos' }
+                        ]
+                    },
+                    {
+                        id: 'q6',
+                        number: 6,
+                        text: '¿Sueles necesitar que el presupuesto tenga "descompuestos" o trabajas a "precio cerrado"?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q6_opt1', label: 'Descompuesto completo: Cada partida debe detallar horas de oficial, peón, sacos de cemento, maquinaria, etc.' },
+                            { id: 'q6_opt2', label: 'Precio unitario alzado/cerrado: Basta con un precio unitario cerrado por m², m³, ud. (ej. 45 €/m²).' },
+                            { id: 'q6_opt3', label: 'Depende de la exigencia del cliente o si es obra pública/privada.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'bloque-3',
+                number: 3,
+                icon: 'library',
+                emoji: '📚',
+                title: 'Bloque 3: Tu Histórico de Obras y Precios Anteriores',
+                questions: [
+                    {
+                        id: 'q7',
+                        number: 7,
+                        text: '¿Cuántos presupuestos pasados tienes aproximadamente que sirvan de buena referencia?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q7_opt1', label: 'Menos de 10' },
+                            { id: 'q7_opt2', label: 'Entre 10 y 50' },
+                            { id: 'q7_opt3', label: 'Más de 50' }
+                        ]
+                    },
+                    {
+                        id: 'q8',
+                        number: 8,
+                        text: '¿Hasta qué antigüedad consideras que un presupuesto histórico es válido en precios?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q8_opt1', label: 'Solo obras del último año (últimos 12 meses)' },
+                            { id: 'q8_opt2', label: 'Obras de los últimos 2 - 3 años (aplicando corrección por subida de precios)' },
+                            { id: 'q8_opt3', label: 'Cualquier obra anterior, siempre que se actualicen los materiales clave' }
+                        ]
+                    },
+                    {
+                        id: 'q9',
+                        number: 9,
+                        text: '¿Separas tus presupuestos por tipología de obra?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q9_opt1', label: 'Sí (ej. Reformas integrales / Vivienda unifamiliar / Naves industriales / Locales)' },
+                            { id: 'q9_opt2', label: 'No, todos están en la misma bolsa de histórico.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'bloque-4',
+                number: 4,
+                icon: 'brick-wall',
+                emoji: '🧱',
+                title: 'Bloque 4: Materiales y Subida de Precios (Inflación)',
+                questions: [
+                    {
+                        id: 'q10',
+                        number: 10,
+                        text: '¿Cómo calculas habitualmente el incremento de precio de los materiales respecto a obras pasadas?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q10_opt1', label: 'Consulto tarifas/albaranes recientes de mis proveedores habituales.' },
+                            { id: 'q10_opt2', label: 'Aplico un porcentaje general de subida (ej. +5% o +10% sobre el histórico).' },
+                            { id: 'q10_opt3', label: 'Para materiales gordos (hormigón, acero, ladrillo, aislamiento) pregunto precio directo; el resto lo estimo por experiencia.' },
+                            { id: 'q10_opt4', label: 'Otro método:', inlineInputs: [{ id: 'q10_otro', prefix: '', suffix: '', placeholder: 'Detallar método de actualización...', width: 'w-72' }] }
+                        ]
+                    },
+                    {
+                        id: 'q11',
+                        number: 11,
+                        text: '¿Dispones de listas de precios o tarifas de tus almacenes/proveedores en digital?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q11_opt1', label: 'Sí (en PDF o Excel de almacenes como BigMat, Brico, La Plataforma, proveedores locales...)' },
+                            { id: 'q11_opt2', label: 'No, suelo llamar por teléfono o consultar albaranes físicos.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'bloque-5',
+                number: 5,
+                icon: 'hard-hat',
+                emoji: '👷',
+                title: 'Bloque 5: Mano de Obra, Rendimientos y Subcontratas',
+                questions: [
+                    {
+                        id: 'q12',
+                        number: 12,
+                        text: '¿Cómo imputas la mano de obra en tus presupuestos?',
+                        type: 'checkbox',
+                        options: [
+                            {
+                                id: 'q12_opt1',
+                                label: 'Precio fijo por hora',
+                                inlineInputs: [
+                                    { id: 'q12_oficial', prefix: '(Oficial 1ª:', suffix: '€/h |', placeholder: '24', width: 'w-20' },
+                                    { id: 'q12_peon', prefix: 'Peón:', suffix: '€/h)', placeholder: '19', width: 'w-20' }
+                                ]
+                            },
+                            { id: 'q12_opt2', label: 'Rendimiento estimado por unidad de obra (ej. 0,5 h de oficial por m² de tabique).' },
+                            {
+                                id: 'q12_opt3',
+                                label: 'Precio cerrado a destajo por unidad',
+                                inlineInputs: [
+                                    { id: 'q12_pladur', prefix: '(ej. Colocación de pladur a', suffix: '€/m²)', placeholder: '32', width: 'w-20' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'q13',
+                        number: 13,
+                        text: '¿Qué partidas de obra SUBCONTRATAS prácticamente siempre?',
+                        subtitle: 'Marcar todas las que apliquen:',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q13_opt1', label: 'Fontanería y climatización' },
+                            { id: 'q13_opt2', label: 'Electricidad e iluminación' },
+                            { id: 'q13_opt3', label: 'Carpintería de aluminio / PVC' },
+                            { id: 'q13_opt4', label: 'Pintura' },
+                            { id: 'q13_opt5', label: 'Estructuras de hormigón / ferralla' },
+                            { id: 'q13_opt6', label: 'Tejados e impermeabilizaciones' },
+                            { id: 'q13_opt7', label: 'Yesos y pladur' },
+                            { id: 'q13_opt8', label: 'Otras:', inlineInputs: [{ id: 'q13_otras', prefix: '', suffix: '', placeholder: 'Carpintería madera, movimiento tierras...', width: 'w-72' }] }
+                        ]
+                    },
+                    {
+                        id: 'q14',
+                        number: 14,
+                        text: 'Para estas partidas subcontratadas, ¿cómo defines el precio en la oferta?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q14_opt1', label: 'Pido presupuesto previo al subcontratista y le añado mi margen comercial.' },
+                            { id: 'q14_opt2', label: 'Pongo un precio de referencia que ya me sé de memoria de otras obras.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'bloque-6',
+                number: 6,
+                icon: 'bar-chart-3',
+                emoji: '📊',
+                title: 'Bloque 6: Márgenes Comerciales y Gastos de Estructura',
+                questions: [
+                    {
+                        id: 'q15',
+                        number: 15,
+                        text: '¿Qué margen de Beneficio Industrial (B.I.) sueles aplicar sobre el coste directo?',
+                        type: 'checkbox',
+                        options: [
+                            {
+                                id: 'q15_opt1',
+                                label: 'Porcentaje fijo para toda la obra:',
+                                inlineInputs: [{ id: 'q15_fijo', prefix: '', suffix: '%', placeholder: '15', width: 'w-20' }]
+                            },
+                            {
+                                id: 'q15_opt2',
+                                label: 'Varía según el tipo de obra o cliente',
+                                inlineInputs: [
+                                    { id: 'q15_min', prefix: '(entre', suffix: '%', placeholder: '10', width: 'w-16' },
+                                    { id: 'q15_max', prefix: 'y', suffix: '%)', placeholder: '20', width: 'w-16' }
+                                ]
+                            },
+                            { id: 'q15_opt3', label: 'Varía según el capítulo (ej. más margen en albañilería, menos en partidas subcontratadas)' }
+                        ]
+                    },
+                    {
+                        id: 'q16',
+                        number: 16,
+                        text: '¿Aplicas un porcentaje de Gastos Generales (G.G.) o Costes Indirectos?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q16_opt1', label: 'Sí, un porcentaje fijo sobre el presupuesto (habitual: 10% - 13%).' },
+                            { id: 'q16_opt2', label: 'No, lo prorrateo dentro del precio de cada partida o dentro del beneficio.' }
+                        ]
+                    },
+                    {
+                        id: 'q17',
+                        number: 17,
+                        text: '¿Aplicas coeficientes de corrección según la dificultad de la obra?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q17_opt1', label: 'Sí (por ejemplo: centro urbano sin aparcamiento, planta alta sin ascensor, zonas de difícil acceso).' },
+                            { id: 'q17_opt2', label: 'No, intento mantener el mismo precio base.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'bloque-7',
+                number: 7,
+                icon: 'target',
+                emoji: '🎯',
+                title: 'Bloque 7: El Formato de Salida y la Revisión',
+                questions: [
+                    {
+                        id: 'q18',
+                        number: 18,
+                        text: '¿Cómo prefieres que la IA te entregue el presupuesto calculado para que tú lo revises?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q18_opt1', label: 'Un archivo .bc3 listo para importar en mi programa de presupuestos (Presto, etc.).' },
+                            { id: 'q18_opt2', label: 'Una hoja Excel (.xlsx) con columnas claras: partida, medición, precio propuesto por IA, precio del histórico y origen del dato.' },
+                            { id: 'q18_opt3', label: 'Ambos formatos (.bc3 + .xlsx comparativo).' }
+                        ]
+                    },
+                    {
+                        id: 'q19',
+                        number: 19,
+                        text: '¿Qué tipo de avisos o banderas rojas te gustaría que el programa te resaltara para no cometer fallos?',
+                        type: 'checkbox',
+                        options: [
+                            { id: 'q19_opt1', label: 'Partidas donde la IA no ha encontrado ninguna referencia parecida en tu histórico (partidas nuevas).' },
+                            { id: 'q19_opt2', label: 'Partidas donde la variación de precio respecto a la última obra supere un X% (ej. más de un 15%).' },
+                            { id: 'q19_opt3', label: 'Partidas críticas con mediciones muy grandes (donde un error de 1 €/m² supone miles de euros).' },
+                            { id: 'q19_opt4', label: 'Partidas sin unidad de medida o con descripciones ambiguas del aparejador.' }
+                        ]
+                    },
+                    {
+                        id: 'q20',
+                        number: 20,
+                        text: '¿Hay alguna "manía", regla de oro o comprobación personal que hagas SIEMPRE antes de enviar un presupuesto a un cliente?',
+                        type: 'textarea_only',
+                        textarea: {
+                            id: 'q20_text',
+                            label: 'Respuesta libre (Reglas de oro, revisiones clave o notas adicionales):',
+                            placeholder: 'Ej: Reviso siempre manualmente las mediciones de demolición y gestión de residuos, redondeo precios unitarios o compruebo que el coste por m² total esté dentro de mi ratio habitual...'
+                        }
+                    }
+                ]
+            }
+        ];
+
+        // =========================================================================
+        // 2. ESTADO DE LA APLICACIÓN Y PERSISTENCIA (localStorage)
+        // =========================================================================
+        const STORAGE_KEY = 'construia_cuestionario_v1';
+
+        let appState = {
+            meta: {
+                empresa: '',
+                responsable: '',
+                especialidad: '',
+                fecha: new Date().toISOString().split('T')[0]
+            },
+            checked: {}, // { q1_opt1: true, ... }
+            inputs: {}   // { q1_presto_ver: '2023', q3_text: '...', ... }
+        };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState = {
+                        meta: { ...appState.meta, ...(parsed.meta || {}) },
+                        checked: parsed.checked || {},
+                        inputs: parsed.inputs || {}
+                    };
+                }
+            } catch (err) {
+                console.error('Error cargando estado:', err);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                showSaveIndicator();
+            } catch (err) {
+                console.error('Error guardando estado:', err);
+            }
+        }
+
+        let saveTimeout;
+        function showSaveIndicator() {
+            const el = document.getElementById('save-indicator');
+            if (!el) return;
+            el.classList.remove('opacity-0');
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                el.classList.add('opacity-0');
+            }, 1800);
+        }
+
+        // =========================================================================
+        // 3. RENDERIZADO DE LA INTERFAZ INTERACTIVA
+        // =========================================================================
+        function renderApp() {
+            // Sincronizar campos meta
+            document.getElementById('meta-empresa').value = appState.meta.empresa || '';
+            document.getElementById('meta-responsable').value = appState.meta.responsable || '';
+            document.getElementById('meta-especialidad').value = appState.meta.especialidad || '';
+            document.getElementById('meta-fecha').value = appState.meta.fecha || new Date().toISOString().split('T')[0];
+
+            // Renderizar Bloques y Preguntas
+            const container = document.getElementById('questions-container');
+            container.innerHTML = QUESTIONNAIRE_DATA.map(block => `
+                <section id="${block.id}" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden scroll-mt-24">
+                    <!-- Cabecera del Bloque -->
+                    <div class="bg-slate-900 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${block.emoji}</span>
+                            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">${block.title}</h2>
+                        </div>
+                        <span id="badge-${block.id}" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                            0 / ${block.questions.length}
+                        </span>
+                    </div>
+
+                    <!-- Lista de Preguntas del Bloque -->
+                    <div class="divide-y divide-slate-100">
+                        ${block.questions.map(q => renderQuestionHTML(q)).join('')}
+                    </div>
+                </section>
+            `).join('');
+
+            renderSidebarNav();
+            updateProgressAndBadges();
+            lucide.createIcons();
+        }
+
+        function renderQuestionHTML(q) {
+            const isAnswered = isQuestionAnswered(q);
+            return `
+                <div id="card-${q.id}" class="p-6 sm:p-8 transition-colors">
+                    <div class="flex items-start justify-between gap-4 mb-4">
+                        <div class="flex items-start gap-3">
+                            <span id="qnum-${q.id}" class="w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isAnswered ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-700'}">
+                                ${q.number}
+                            </span>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900 leading-snug">${q.text}</h3>
+                                ${q.subtitle ? `<p class="text-xs sm:text-sm text-slate-500 mt-1">${q.subtitle}</p>` : ''}
+                            </div>
+                        </div>
+                        <span id="qstatus-${q.id}" class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-md ${isAnswered ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                            ${isAnswered ? 'Respondida' : 'Pendiente'}
+                        </span>
+                    </div>
+
+                    <!-- Opciones tipo Checkbox -->
+                    ${q.options ? `
+                        <div class="space-y-2.5 pl-0 sm:pl-10">
+                            ${q.options.map(opt => {
+                                const checked = !!appState.checked[opt.id];
+                                return `
+                                    <div id="optcard-${opt.id}" 
+                                         onclick="handleOptionCardClick(event, '${opt.id}')"
+                                         class="option-card cursor-pointer rounded-xl border p-3.5 flex flex-wrap items-center gap-2.5 ${checked ? 'selected border-amber-500 bg-amber-50/60' : 'border-slate-200 bg-white'}">
+                                        
+                                        <div class="flex items-center gap-3 flex-1 min-w-[220px]">
+                                            <input type="checkbox" 
+                                                   id="${opt.id}" 
+                                                   ${checked ? 'checked' : ''}
+                                                   onchange="toggleOption('${opt.id}')"
+                                                   onclick="event.stopPropagation()"
+                                                   class="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer shrink-0">
+                                            <label for="${opt.id}" onclick="event.stopPropagation()" class="text-sm font-medium text-slate-800 cursor-pointer select-none">
+                                                ${opt.label}
+                                            </label>
+                                        </div>
+
+                                        ${opt.inlineInputs ? `
+                                            <div class="flex flex-wrap items-center gap-2 ml-7 sm:ml-0" onclick="event.stopPropagation()">
+                                                ${opt.inlineInputs.map(inp => `
+                                                    <div class="inline-flex items-center gap-1.5 text-xs sm:text-sm text-slate-600">
+                                                        ${inp.prefix ? `<span>${inp.prefix}</span>` : ''}
+                                                        <input type="text"
+                                                               id="${inp.id}"
+                                                               value="${escapeHtml(appState.inputs[inp.id] || '')}"
+                                                               placeholder="${inp.placeholder || ''}"
+                                                               oninput="handleInlineInput('${inp.id}', '${opt.id}', this.value)"
+                                                               class="inline-input text-xs sm:text-sm ${inp.width || 'w-32'}">
+                                                        ${inp.suffix ? `<span>${inp.suffix}</span>` : ''}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+
+                    <!-- Campo de Texto Libre (Pregunta 3 y Pregunta 20) -->
+                    ${q.textarea ? `
+                        <div class="mt-4 pl-0 sm:pl-10">
+                            <label for="${q.textarea.id}" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                ${q.textarea.label}
+                            </label>
+                            <textarea id="${q.textarea.id}"
+                                      rows="3"
+                                      placeholder="${q.textarea.placeholder}"
+                                      oninput="handleTextInput('${q.textarea.id}', this.value)"
+                                      class="w-full rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white p-3.5 text-sm text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">${escapeHtml(appState.inputs[q.textarea.id] || '')}</textarea>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderSidebarNav() {
+            const nav = document.getElementById('block-nav');
+            nav.innerHTML = QUESTIONNAIRE_DATA.map(block => {
+                const answeredCount = block.questions.filter(q => isQuestionAnswered(q)).length;
+                const totalCount = block.questions.length;
+                const allDone = answeredCount === totalCount;
+
+                return `
+                    <a href="#${block.id}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all hover:bg-slate-100 group">
+                        <div class="flex items-center gap-2.5 truncate pr-2">
+                            <span class="text-base">${block.emoji}</span>
+                            <span class="text-slate-700 group-hover:text-slate-950 font-semibold truncate">Bloque ${block.number}</span>
+                        </div>
+                        <span id="nav-badge-${block.id}" class="px-2 py-0.5 rounded-full text-[11px] font-bold ${allDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+                            ${answeredCount}/${totalCount}
+                        </span>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 4. LÓGICA DE INTERACCIÓN Y VALIDACIÓN DE PROGRESO
+        // =========================================================================
+        function isQuestionAnswered(q) {
+            let hasOptionChecked = false;
+            if (q.options) {
+                hasOptionChecked = q.options.some(opt => !!appState.checked[opt.id]);
+            }
+            let hasTextareaContent = false;
+            if (q.textarea) {
+                hasTextareaContent = (appState.inputs[q.textarea.id] || '').trim().length > 0;
+            }
+            return hasOptionChecked || hasTextareaContent;
+        }
+
+        function handleOptionCardClick(event, optId) {
+            const checkbox = document.getElementById(optId);
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            toggleOption(optId);
+        }
+
+        function toggleOption(optId) {
+            const checkbox = document.getElementById(optId);
+            const card = document.getElementById(`optcard-${optId}`);
+            if (!checkbox) return;
+
+            appState.checked[optId] = checkbox.checked;
+            if (card) {
+                if (checkbox.checked) {
+                    card.classList.add('selected', 'border-amber-500', 'bg-amber-50/60');
+                    card.classList.remove('border-slate-200', 'bg-white');
+                } else {
+                    card.classList.remove('selected', 'border-amber-500', 'bg-amber-50/60');
+                    card.classList.add('border-slate-200', 'bg-white');
+                }
+            }
+
+            saveState();
+            updateProgressAndBadges();
+        }
+
+        function handleInlineInput(inputId, parentOptId, value) {
+            appState.inputs[inputId] = value;
+
+            // Si el usuario escribe en un campo dentro de una opción, marcamos automáticamente esa opción
+            if (value.trim().length > 0 && !appState.checked[parentOptId]) {
+                const checkbox = document.getElementById(parentOptId);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    toggleOption(parentOptId);
+                    return;
+                }
+            }
+
+            saveState();
+            updateProgressAndBadges();
+        }
+
+        function handleTextInput(inputId, value) {
+            appState.inputs[inputId] = value;
+            saveState();
+            updateProgressAndBadges();
+        }
+
+        function updateProgressAndBadges() {
+            let totalQuestions = 0;
+            let totalAnswered = 0;
+
+            QUESTIONNAIRE_DATA.forEach(block => {
+                let blockAnswered = 0;
+                block.questions.forEach(q => {
+                    totalQuestions++;
+                    const answered = isQuestionAnswered(q);
+                    if (answered) {
+                        totalAnswered++;
+                        blockAnswered++;
+                    }
+
+                    // Actualizar indicador visual de la pregunta
+                    const qNumEl = document.getElementById(`qnum-${q.id}`);
+                    const qStatusEl = document.getElementById(`qstatus-${q.id}`);
+                    if (qNumEl) {
+                        qNumEl.className = `w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 transition-colors ${answered ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-700'}`;
+                    }
+                    if (qStatusEl) {
+                        qStatusEl.className = `shrink-0 text-xs font-medium px-2 py-0.5 rounded-md ${answered ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400'}`;
+                        qStatusEl.textContent = answered ? 'Respondida' : 'Pendiente';
+                    }
+                });
+
+                // Actualizar badge de cabecera del bloque y sidebar
+                const blockBadge = document.getElementById(`badge-${block.id}`);
+                const navBadge = document.getElementById(`nav-badge-${block.id}`);
+                const allDone = blockAnswered === block.questions.length;
+
+                if (blockBadge) {
+                    blockBadge.textContent = `${blockAnswered} / ${block.questions.length} completadas`;
+                    blockBadge.className = `text-xs font-semibold px-2.5 py-1 rounded-full border ${allDone ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-slate-800 text-slate-300 border-slate-700'}`;
+                }
+                if (navBadge) {
+                    navBadge.textContent = `${blockAnswered}/${block.questions.length}`;
+                    navBadge.className = `px-2 py-0.5 rounded-full text-[11px] font-bold ${allDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`;
+                }
+            });
+
+            const pct = Math.round((totalAnswered / totalQuestions) * 100);
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+            document.getElementById('progress-text').textContent = `${totalAnswered} / ${totalQuestions} respondidas (${pct}%)`;
+
+            const mobileBar = document.getElementById('progress-bar-mobile');
+            const mobileText = document.getElementById('progress-text-mobile');
+            if (mobileBar) mobileBar.style.width = `${pct}%`;
+            if (mobileText) mobileText.textContent = `${totalAnswered}/${totalQuestions}`;
+        }
+
+        // =========================================================================
+        // 5. GENERACIÓN DEL INFORME EN HTML PARA VISTA PREVIA Y PDF
+        // =========================================================================
+        function formatOptionForReport(opt) {
+            let text = opt.label;
+            if (opt.inlineInputs && opt.inlineInputs.length > 0) {
+                const details = opt.inlineInputs.map(inp => {
+                    const val = (appState.inputs[inp.id] || '').trim();
+                    const cleanPrefix = (inp.prefix || '').replace(/^\(/, '');
+                    const cleanSuffix = (inp.suffix || '').replace(/\)$/, '');
+                    return `${cleanPrefix} <strong>${val ? escapeHtml(val) : '___'}</strong> ${cleanSuffix}`.trim();
+                }).join(' ');
+                text += ` <span class="text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded text-xs ml-1">(${details})</span>`;
+            }
+            return text;
+        }
+
+        function generateReportHTML() {
+            const empresa = (appState.meta.empresa || '').trim() || 'No especificada';
+            const responsable = (appState.meta.responsable || '').trim() || 'No especificado';
+            const especialidad = (appState.meta.especialidad || '').trim() || 'Constructora / Reformas';
+            const fecha = appState.meta.fecha || new Date().toISOString().split('T')[0];
+
+            let totalAnswered = 0;
+            QUESTIONNAIRE_DATA.forEach(b => b.questions.forEach(q => {
+                if (isQuestionAnswered(q)) totalAnswered++;
+            }));
+
+            return `
+                <div class="font-sans text-slate-900">
+                    <!-- Encabezado del Documento PDF -->
+                    <div class="border-b-2 border-slate-900 pb-5 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 bg-amber-500 text-slate-950 font-extrabold text-xs rounded uppercase tracking-wider">ConstruIA</span>
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Informe de Configuración Operativa</span>
+                            </div>
+                            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+                                Cuestionario Operativo: Automatización de Presupuestos
+                            </h1>
+                        </div>
+                        <div class="text-left sm:text-right text-xs text-slate-600 bg-slate-100 px-3.5 py-2 rounded-lg border border-slate-200">
+                            <div><strong>Fecha:</strong> ${escapeHtml(fecha)}</div>
+                            <div><strong>Completado:</strong> ${totalAnswered} / 20 preguntas</div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Metadatos del Constructor -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase block mb-0.5">Empresa / Constructora</span>
+                            <span class="font-bold text-slate-800 text-sm">${escapeHtml(empresa)}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase block mb-0.5">Responsable</span>
+                            <span class="font-bold text-slate-800 text-sm">${escapeHtml(responsable)}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase block mb-0.5">Especialidad</span>
+                            <span class="font-bold text-slate-800 text-sm">${escapeHtml(especialidad)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Bloques y Respuestas -->
+                    <div class="space-y-6">
+                        ${QUESTIONNAIRE_DATA.map(block => `
+                            <div class="border border-slate-200 rounded-xl overflow-hidden page-break-inside-avoid">
+                                <div class="bg-slate-900 text-white px-4 py-2.5 text-sm font-bold flex items-center gap-2">
+                                    <span>${block.emoji}</span>
+                                    <span>${block.title}</span>
+                                </div>
+                                <div class="divide-y divide-slate-200 bg-white">
+                                    ${block.questions.map(q => {
+                                        const selectedOptions = (q.options || []).filter(opt => !!appState.checked[opt.id]);
+                                        const freeText = q.textarea ? (appState.inputs[q.textarea.id] || '').trim() : '';
+                                        const hasAnyAnswer = selectedOptions.length > 0 || freeText.length > 0;
+
+                                        return `
+                                            <div class="p-4 page-break-inside-avoid">
+                                                <div class="font-bold text-xs sm:text-sm text-slate-900 mb-2">
+                                                    ${q.number}. ${q.text}
+                                                </div>
+                                                
+                                                ${hasAnyAnswer ? `
+                                                    <div class="space-y-1.5 pl-3 border-l-2 border-amber-500">
+                                                        ${selectedOptions.map(opt => `
+                                                            <div class="text-xs sm:text-sm text-slate-800 flex items-start gap-2">
+                                                                <span class="text-amber-600 font-bold">☑</span>
+                                                                <span>${formatOptionForReport(opt)}</span>
+                                                            </div>
+                                                        `).join('')}
+
+                                                        ${freeText ? `
+                                                            <div class="mt-2 bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-xs sm:text-sm text-slate-800">
+                                                                <span class="font-semibold text-amber-900 block text-xs mb-0.5">Respuesta detallada:</span>
+                                                                <p class="whitespace-pre-line">${escapeHtml(freeText)}</p>
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                ` : `
+                                                    <p class="text-xs italic text-slate-400 pl-3 border-l-2 border-slate-200">
+                                                        Sin respuesta seleccionada
+                                                    </p>
+                                                `}
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Pie del Documento PDF -->
+                    <div class="mt-8 pt-4 border-t border-slate-200 text-center text-xs text-slate-500">
+                        Documento generado mediante el Cuestionario Operativo de <strong>ConstruIA</strong> — Calibración de IA para Presupuestos de Construcción.
+                    </div>
+                </div>
+            `;
+        }
+
+        // =========================================================================
+        // 6. FUNCIONES DE MODAL, DESCARGA PDF (html2pdf) E IMPRESIÓN NATIVA
+        // =========================================================================
+        function openSummaryModal() {
+            const previewContainer = document.getElementById('modal-report-preview');
+            previewContainer.innerHTML = generateReportHTML();
+            document.getElementById('summary-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summary-modal').classList.add('hidden');
+        }
+
+        function showToast(msg, duration = 3500) {
+            const toast = document.getElementById('toast-notification');
+            const msgEl = document.getElementById('toast-message');
+            msgEl.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, duration);
+        }
+
+        function downloadPDF() {
+            showToast('Preparando y descargando tu archivo PDF...');
+
+            // Crear contenedor temporal limpio para html2pdf
+            const tempContainer = document.createElement('div');
+            tempContainer.style.width = '780px';
+            tempContainer.style.padding = '24px';
+            tempContainer.style.backgroundColor = '#ffffff';
+            tempContainer.innerHTML = generateReportHTML();
+            document.body.appendChild(tempContainer);
+
+            const empresaSlug = (appState.meta.empresa || 'Constructor')
+                .trim()
+                .replace(/[^a-zA-Z0-9_-]/g, '_')
+                .replace(/_+/g, '_');
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     `Cuestionario_ConstruIA_${empresaSlug}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            html2pdf().set(opt).from(tempContainer).save().then(() => {
+                document.body.removeChild(tempContainer);
+                showToast('¡PDF descargado correctamente!');
+            }).catch(err => {
+                console.error('Error al generar PDF:', err);
+                document.body.removeChild(tempContainer);
+                // Fallback directo a impresión nativa si hubiese algún bloqueo
+                printNativePDF();
+            });
+        }
+
+        function printNativePDF() {
+            const printContainer = document.getElementById('print-report-container');
+            printContainer.innerHTML = generateReportHTML();
+            window.print();
+        }
+
+        // Genera un resumen en texto limpio para WhatsApp y Portapapeles
+        function generatePlainTextSummary() {
+            const empresa = (appState.meta.empresa || '').trim() || 'No especificada';
+            const responsable = (appState.meta.responsable || '').trim() || 'No especificado';
+            const especialidad = (appState.meta.especialidad || '').trim() || 'Constructora / Reformas';
+            const fecha = appState.meta.fecha || new Date().toISOString().split('T')[0];
+
+            let lines = [];
+            lines.push(`📋 *CUESTIONARIO OPERATIVO CONSTRUIA*`);
+            lines.push(`🏢 *Empresa:* ${empresa}`);
+            lines.push(`👤 *Responsable:* ${responsable}`);
+            lines.push(`🏗️ *Especialidad:* ${especialidad}`);
+            lines.push(`📅 *Fecha:* ${fecha}`);
+            lines.push(`---------------------------------------`);
+
+            QUESTIONNAIRE_DATA.forEach(block => {
+                lines.push(`\n${block.emoji} *${block.title}*`);
+                block.questions.forEach(q => {
+                    const selectedOptions = (q.options || []).filter(opt => !!appState.checked[opt.id]);
+                    const freeText = q.textarea ? (appState.inputs[q.textarea.id] || '').trim() : '';
+                    const hasAnyAnswer = selectedOptions.length > 0 || freeText.length > 0;
+
+                    if (hasAnyAnswer) {
+                        lines.push(`\n*${q.number}. ${q.text}*`);
+                        selectedOptions.forEach(opt => {
+                            let optText = `  • ${opt.label}`;
+                            if (opt.inlineInputs && opt.inlineInputs.length > 0) {
+                                const details = opt.inlineInputs.map(inp => {
+                                    const val = (appState.inputs[inp.id] || '').trim();
+                                    const cleanPrefix = (inp.prefix || '').replace(/^\(/, '');
+                                    const cleanSuffix = (inp.suffix || '').replace(/\)$/, '');
+                                    return `${cleanPrefix} ${val || '___'} ${cleanSuffix}`.trim();
+                                }).join(' ');
+                                optText += ` (${details})`;
+                            }
+                            lines.push(optText);
+                        });
+                        if (freeText) {
+                            lines.push(`  💬 Detalle: ${freeText}`);
+                        }
+                    }
+                });
+            });
+
+            return lines.join('\n');
+        }
+
+        function copySummaryText() {
+            const text = generatePlainTextSummary();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('¡Respuestas copiadas al portapapeles!');
+                }).catch(() => {
+                    fallbackCopyText(text);
+                });
+            } else {
+                fallbackCopyText(text);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast('¡Respuestas copiadas al portapapeles!');
+            } catch (err) {
+                showToast('No se pudo copiar automáticamente. Por favor descarga el PDF.');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function shareWhatsApp() {
+            const text = generatePlainTextSummary();
+            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+
+        // Modal de limpiar formulario
+        function openResetModal() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        }
+
+        function confirmResetForm() {
+            appState = {
+                meta: {
+                    empresa: '',
+                    responsable: '',
+                    especialidad: '',
+                    fecha: new Date().toISOString().split('T')[0]
+                },
+                checked: {},
+                inputs: {}
+            };
+            localStorage.removeItem(STORAGE_KEY);
+            closeResetModal();
+            renderApp();
+            showToast('Formulario reiniciado correctamente.');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Utilidad para escapar caracteres especiales en atributos HTML
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // =========================================================================
+        // 7. INICIALIZACIÓN Y EVENTOS DE METADATOS
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderApp();
+
+            // Listeners para los campos de identificación superior
+            ['empresa', 'responsable', 'especialidad', 'fecha'].forEach(field => {
+                const el = document.getElementById(`meta-${field}`);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        appState.meta[field] = e.target.value;
+                        saveState();
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
