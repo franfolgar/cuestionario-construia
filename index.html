@@ -1018,7 +1018,7 @@
                     const cleanSuffix = (inp.suffix || '').replace(/\)$/, '');
                     return `${cleanPrefix} <strong>${val ? escapeHtml(val) : '___'}</strong> ${cleanSuffix}`.trim();
                 }).join(' ');
-                text += ` <span class="text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded text-xs ml-1">(${details})</span>`;
+                text += ` <span class="text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-xs ml-1 font-semibold">(${details})</span>`;
             }
             return text;
         }
@@ -1099,7 +1099,7 @@
                                                         `).join('')}
 
                                                         ${freeText ? `
-                                                            <div class="mt-2 bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-xs sm:text-sm text-slate-800">
+                                                            <div class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs sm:text-sm text-slate-800">
                                                                 <span class="font-semibold text-amber-900 block text-xs mb-0.5">Respuesta detallada:</span>
                                                                 <p class="whitespace-pre-line">${escapeHtml(freeText)}</p>
                                                             </div>
@@ -1151,13 +1151,19 @@
         }
 
         function downloadPDF() {
-            showToast('Preparando y descargando tu archivo PDF...');
+            showToast('Generando tu archivo PDF...');
 
-            // Crear contenedor temporal limpio para html2pdf
+            // Contenedor temporal fijado en top:0 para que html2canvas no sufra por el scroll de la página
             const tempContainer = document.createElement('div');
-            tempContainer.style.width = '780px';
+            tempContainer.id = 'temp-pdf-export-box';
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.top = '0px';
+            tempContainer.style.left = '0px';
+            tempContainer.style.width = '794px'; // Ancho A4 exacto a 96 DPI
             tempContainer.style.padding = '24px';
             tempContainer.style.backgroundColor = '#ffffff';
+            tempContainer.style.zIndex = '999999';
+            tempContainer.style.boxSizing = 'border-box';
             tempContainer.innerHTML = generateReportHTML();
             document.body.appendChild(tempContainer);
 
@@ -1167,23 +1173,38 @@
                 .replace(/_+/g, '_');
 
             const opt = {
-                margin:       [10, 10, 10, 10],
+                margin:       [8, 8, 8, 8],
                 filename:     `Cuestionario_ConstruIA_${empresaSlug}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    scrollY: 0, 
+                    scrollX: 0,
+                    windowWidth: 1024,
+                    logging: false 
+                },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            html2pdf().set(opt).from(tempContainer).save().then(() => {
-                document.body.removeChild(tempContainer);
-                showToast('¡PDF descargado correctamente!');
-            }).catch(err => {
-                console.error('Error al generar PDF:', err);
-                document.body.removeChild(tempContainer);
-                // Fallback directo a impresión nativa si hubiese algún bloqueo
-                printNativePDF();
-            });
+            // Pequeña espera asíncrona para que el motor renderice estilos y tipografías
+            setTimeout(() => {
+                html2pdf().set(opt).from(tempContainer).save().then(() => {
+                    if (document.body.contains(tempContainer)) {
+                        document.body.removeChild(tempContainer);
+                    }
+                    showToast('¡PDF descargado con éxito!');
+                }).catch(err => {
+                    console.error('Error al generar PDF con html2pdf:', err);
+                    if (document.body.contains(tempContainer)) {
+                        document.body.removeChild(tempContainer);
+                    }
+                    // Fallback transparente a impresión del sistema
+                    showToast('Abriendo ventana de impresión para guardar PDF...');
+                    printNativePDF();
+                });
+            }, 180);
         }
 
         function printNativePDF() {
