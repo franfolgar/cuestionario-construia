@@ -222,17 +222,17 @@
                             <i data-lucide="message-circle" class="w-4 h-4 text-emerald-200"></i>
                             Enviar por WhatsApp
                         </button>
-                        <button onclick="downloadPDF()" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
-                            <i data-lucide="file-down" class="w-4 h-4 text-amber-400"></i>
-                            Descargar Informe PDF
+                        <button onclick="printNativePDF()" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
+                            <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i>
+                            Guardar como PDF / Imprimir
+                        </button>
+                        <button onclick="downloadPDF()" class="w-full py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="file-down" class="w-3.5 h-3.5 text-amber-600"></i>
+                            Descargar archivo directo .pdf
                         </button>
                         <button onclick="copySummaryText()" class="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-500"></i>
                             Copiar todas las respuestas
-                        </button>
-                        <button onclick="printNativePDF()" class="w-full py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
-                            <i data-lucide="printer" class="w-3.5 h-3.5 text-amber-600"></i>
-                            Imprimir / Vista previa
                         </button>
                         <button onclick="openResetModal()" class="w-full py-2 px-4 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 font-medium text-xs flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
@@ -273,17 +273,21 @@
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
                     Enviar por WhatsApp
                 </button>
+                <button onclick="printNativePDF()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    Guardar como PDF (Recomendado)
+                </button>
+                <button onclick="downloadPDF()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
+                    <i data-lucide="file-down" class="w-4 h-4 text-slate-500"></i>
+                    Descarga directa .pdf
+                </button>
                 <button onclick="copySummaryText()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
                     <i data-lucide="copy" class="w-4 h-4 text-slate-500"></i>
-                    Copiar Respuestas
+                    Copiar
                 </button>
                 <button onclick="openSummaryModal()" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all">
                     <i data-lucide="clipboard-check" class="w-4 h-4 text-slate-600"></i>
                     Revisar
-                </button>
-                <button onclick="downloadPDF()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all">
-                    <i data-lucide="file-down" class="w-4 h-4"></i>
-                    Descargar PDF
                 </button>
             </div>
         </div>
@@ -324,13 +328,13 @@
                         <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                         Copiar
                     </button>
-                    <button onclick="printNativePDF()" class="px-3.5 py-2 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1.5 transition-colors">
-                        <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i>
-                        Imprimir
+                    <button onclick="printNativePDF()" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm transition-colors">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        Guardar como PDF / Imprimir
                     </button>
-                    <button onclick="downloadPDF()" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm transition-colors">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                        Descargar PDF
+                    <button onclick="downloadPDF()" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        Descarga directa
                     </button>
                 </div>
             </div>
@@ -1199,9 +1203,20 @@
         }
 
         function printNativePDF() {
+            const empresaSlug = (appState.meta.empresa || 'Constructor')
+                .trim()
+                .replace(/[^a-zA-Z0-9_-]/g, '_')
+                .replace(/_+/g, '_');
+            const originalTitle = document.title;
+            document.title = `Cuestionario_ConstruIA_${empresaSlug}`;
+
             const printContainer = document.getElementById('print-report-container');
             printContainer.innerHTML = generateReportHTML();
             window.print();
+
+            setTimeout(() => {
+                document.title = originalTitle;
+            }, 1000);
         }
 
         // Genera un resumen en texto limpio para WhatsApp y Portapapeles
